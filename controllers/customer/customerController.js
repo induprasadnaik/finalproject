@@ -1,7 +1,7 @@
 // import Order  from '../models/customerOrderModel.js'
 // import vendorOrder from '../../vendor/models/venderwiseOrder.js'
 // import Product from '../../vendor/models/productsModel.js'
-import Customer from '../../models/customer/customerModel.js'
+import Customer from '../../models/customer/customerModel.js';
 
 export const createOrder = async(res,req)=>{
     try{
@@ -143,16 +143,47 @@ catch(error){
 }
 };
 //////customer profile update
-export const updateCustomerprofile =async(req,res)=>{
-    try{
-    const userId = req.loggedUser._id;
-    const updated = await Customer.findOneAndUpdate({user_id:userId},{ $set: req.body },
-    { new: true });
-    res.status(200).json({ success: true, data: updated });
+export const updateCustomerprofile = async (req, res) => {
+  try {
+    const userId = req.loggedUser._id; // from JWT middleware
+
+    let customer = await Customer.findOne({ user_id: userId });
+
+    if (customer) {
+      // UPDATE PROFILE
+      customer = await Customer.findOneAndUpdate(
+        { user_id: userId },
+        { ...req.body },
+        { new: true, runValidators: true }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Customer profile updated successfully",
+        data: customer
+      });
     }
-    catch(error){
-         res.status(500).json({message:"Server error", error: error.message});   
-}
+
+    // CREATE PROFILE
+    customer = await Customer.create({
+      user_id: userId,
+      ...req.body
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Customer profile created successfully",
+      data: customer
+    });
+  } catch (error) {
+    console.error("Customer profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to save customer profile",
+      error: error.message
+    });
+  }
 };
 ////get customer details by id
 export const getCustomerbyId =async(req,res)=>{
@@ -160,8 +191,115 @@ export const getCustomerbyId =async(req,res)=>{
     const userId = req.loggedUser._id;
     const customer = await Customer.findOne({user_id:userId});
     res.status(200).json({ success: true, data: customer });
+        }
+        catch(error){
+            res.status(500).json({message:"Server error", error: error.message});   
     }
-    catch(error){
-         res.status(500).json({message:"Server error", error: error.message});   
 }
+
+//get customer address
+export const getaddressByCustomerbyId = async(req,res) => {
+    try{
+        const userId = req.loggedUser._id;
+        const customer = await Customer.findOne({user_id:userId});
+        res.status(200).json({ success: true, data: customer.address });
+    }catch(error){
+            res.status(500).json({message:"Server error", error: error.message});   
+    }
 }
+
+//get customer address
+export const getaddressByCustomeraddressbyId = async (req, res) => {
+  try {
+    const userId = req.loggedUser._id;
+    const { addressId } = req.params;
+    const customer = await Customer.findOne({
+      user_id: userId,
+      "address._id": addressId
+    },
+    {
+      "address.$": 1
+    });
+    if (!customer || !customer.address.length) {
+      return res.status(404).json({ message: "Address not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: customer.address[0]
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching address",
+      error: error.message
+    });
+  }
+};
+
+//add new address
+export const addCustomerAddress = async (req, res) => {
+  try {
+    const userId = req.loggedUser._id;
+    const newAddress = req.body;
+
+    const customer = await Customer.findOneAndUpdate(
+      { user_id: userId },
+      { $push: { address: newAddress } },
+      { new: true }
+    );
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer profile not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Address added successfully",
+      data: customer.address
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error adding address",
+      error: error.message
+    });
+  }
+};
+
+//update existing address
+export const updateCustomerAddress = async (req, res) => {
+  try {
+    const userId = req.loggedUser._id;
+    const { addressId } = req.params;
+
+    const updatedAddress = req.body;
+
+    const customer = await Customer.findOneAndUpdate(
+      {
+        user_id: userId,
+        "address._id": addressId
+      },
+      {
+        $set: {
+          "address.$": updatedAddress
+        }
+      },
+      { new: true }
+    );
+
+    if (!customer) {
+      return res.status(404).json({ message: "Address not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Address updated successfully",
+      data: customer.address
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating address",
+      error: error.message
+    });
+  }
+};
+

@@ -32,14 +32,13 @@ export const updateVendorStatus =async(req,res)=>{
       if(!["approved", "rejected"].includes(status)){
        return res.status(400).json({success:true,message:"invalid status"});
       }
-const vendor = await Vendor.findByIdAndUpdate(id,{status,isActive: status === "approved"}, { new: true });
-   if(!vendor){
-    return res.status(404).json({
-      success: true,
-      message: "vendor not found",
-    });
- 
-   }
+    const vendor = await Vendor.findByIdAndUpdate(id,{status,isActive: status === "approved"}, { new: true });
+    if(!vendor){
+        return res.status(404).json({
+        success: true,
+        message: "vendor not found",
+        });
+    }
       return res.status(201).json({
       success: true,
       message: "successdully",
@@ -63,10 +62,9 @@ export const getAllCustomers =async(req,res)=>{
 /////fetch all vendors list
 export const getAllVendors= async(req,res)=>{
     try{
-const vendors =await Vendor.find().populate("user_id","username email role isActive createdAt");
-  res.status(200).json({ success: true, data: vendors});    
-}
-      catch(error){
+        const vendors =await Vendor.find().populate("user_id","username email role isActive createdAt");
+        res.status(200).json({ success: true, data: vendors});    
+    }catch(error){
     res.status(500).json({success: false,message:error.message});  
     }
 };

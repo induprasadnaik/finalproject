@@ -1,70 +1,9 @@
 // import Product from '../models/productsModel.js'
 import Vendor from '../../models/vendor/vendorModel.js'
+import User from '../../models/admin/adminModels.js'
 // import VendorOrder from '../models/venderwiseOrder.js'
 
-export const addProduct =async(req,res)=>{
-    try{
-     const {
-    vendor_id,
-      name,
-      description,
-      category,
-      brand,
-      images,
-      price,
-      discountPercent,
-      stock,
-      sku,
-      isActive,
-    } = req.body;
 
-    //validation
-  if (!vendor_id || !name || !description || !category || !price || !stock || !sku) {
-      return res.status(400).json({
-        success: false,
-        message: "Please fill all required fields",
-      });
-    }
-
-    const existingsku = await Product.findOne({sku})
-   if(existingsku){
-     return res.status(201).json({
-      success: false,
-      message: "SKU already exists"
-    });
-   }
-
-   //calculate discounted price
-    let discountedPrice = price;
-    if (discountPercent && discountPercent > 0) {
-      discountedPrice = price - (price * discountPercent) / 100;
-    }
-//add product table
-const product = await Product.create({
-    vendor_id,
-      name,
-      description,
-      category,
-      brand,
-      images,
-      price,
-      discountPercent: discountPercent || 0,
-      discountedPrice,
-      stock,
-      sku,
-      isActive: isActive ?? true, 
-});
-  return res.status(201).json({
-      success: true,
-      message: "Product added successfully",
-      product,
-       });
-}
- 
-    catch(error){
-        res.status(500).json({message:"server error",error:error.message})
-    }
-};
 //get all products
 export const getAllproducts = async(req,res)=>{
     try{
@@ -189,19 +128,6 @@ export const updateProduct = async(req,res)=>{
 
 };
 
-/////update vendor profile
-export const updateVendorprofile = async(req,res)=>{
-  try{
-const userId = req.loggedUser._id;
-const  updated = await Vendor.findOneAndUpdate({ user_id: userId },
-    { $set: req.body },
-    { new: true });
-      res.status(200).json({ success: true, data: updated });
-  }
-  catch(error){
-         res.status(500).json({message:"Server error", error: error.message});   
-}
-};
 //////Get vendorwise customers orders list
 export const getVendorwiseCustomerorder = async(req,res)=>{
 try{
@@ -220,12 +146,60 @@ res.status(200).json({ success: true, data: orders });
 //////get vendor by id
 export const getVendorbyId =async(req,res)=>{
     try{
-    const userId = req.loggedUser._id;
-    const vendor = await Vendor.findOne({user_id:userId});
-    res.status(200).json({ success: true, data: vendor });
+      const userId = req.loggedUser._id;
+      const vendor = await User.findOne({_id:userId});
+      res.status(200).json({ success: true, data: vendor });
     }
     catch(error){
          res.status(500).json({message:"Server error", error: error.message});   
+  }
 }
-}
+
+/**
+ * @desc    Create or update vendor profile
+ * @route   POST /api/vendor/profile
+ * @access  Private (Vendor)
+ */
+export const updateVendorprofile = async (req, res) => {
+  try {
+    const userId = req.loggedUser._id; // from JWT middleware
+
+    // Check if vendor profile already exists
+    let vendor = await Vendor.findOne({ user_id: userId });
+   
+    if (vendor) {
+      // UPDATE EXISTING PROFILE
+      vendor = await Vendor.findOneAndUpdate(
+        { user_id: userId },
+        { ...req.body },
+        { new: true, runValidators: true }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Vendor profile updated successfully",
+        data: vendor,
+      });
+    }
+
+    // CREATE NEW PROFILE
+    vendor = await Vendor.create({
+      user_id: userId,
+      ...req.body,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Vendor profile created successfully",
+      data: vendor,
+    });
+  } catch (error) {
+    console.error("Vendor profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to save vendor profile",
+    });
+  }
+};
 
